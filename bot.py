@@ -92,9 +92,9 @@ def run_bot(bot_id: str, batch_size: int = 5, max_iters: int = 0):
             passed = wq.passes_thresholds(result)
 
             logger.info(
-                f"  sharpe={stats.get('sharpe', '?'):.3f}  "
-                f"fitness={stats.get('fitness', '?'):.3f}  "
-                f"turnover={stats.get('turnover', '?'):.3f}  "
+                f"  sharpe={stats.get('sharpe') or 0:.3f}  "
+                f"fitness={stats.get('fitness') or 0:.3f}  "
+                f"turnover={stats.get('turnover') or 0:.3f}  "
                 f"{'PASS ✓' if passed else 'fail'}"
             )
 

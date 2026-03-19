@@ -44,7 +44,6 @@ TEMPLATES = [
     "rank(ts_delta({price}, {ws})) * -1",
     "-rank(ts_decay_linear(ts_delta({price}, {ws}), {ws}))",
     "rank({price} / ts_mean({price}, {wm}) - 1) * -1",
-    "-rank(ts_delta(log({price}), {ws}))",
 
     # Volume / price interaction
     "-rank(ts_corr(rank({price}), rank({volume}), {wm}))",
@@ -54,9 +53,7 @@ TEMPLATES = [
     "-rank(({price} - vwap) / vwap * log({volume}))",
 
     # Volatility
-    "-rank(ts_std({price}, {wm}))",
-    "rank(1 / ts_std(returns, {wm}))",
-    "-rank(ts_std(returns, {ws}) / ts_std(returns, {wl}))",
+    "rank(1 / ts_stddev(returns, {wm}))",
     "rank(ts_skewness(returns, {wm})) * -1",
     "-rank(ts_kurtosis(returns, {wm}))",
 
@@ -75,7 +72,7 @@ TEMPLATES = [
 
     # Composite momentum + volume
     "-rank(ts_corr(ts_rank({price}, {wm}), ts_rank({volume}, {wm}), {ws}))",
-    "rank(ts_mean(returns, {ws}) / ts_std(returns, {wm}))",
+    "rank(ts_mean(returns, {ws}) / ts_stddev(returns, {wm}))",
     "-rank(ts_decay_linear(rank(returns), {ws}))",
 
     # High-low range
@@ -165,9 +162,9 @@ def _random_settings() -> dict:
     """Vary simulation settings to explore more of the space."""
     return {
         "region": random.choice(["USA", "USA"]),  # extend later
-        "universe": random.choice(["TOP3000", "TOP2000", "TOP1000"]),
+        "universe": random.choice(["TOP3000", "TOP1000"]),
         "neutralization": random.choice(["MARKET", "SECTOR", "SUBINDUSTRY"]),
-        "decay": random.choice([0, 2, 4, 6]),
+        "decay": random.choice([4, 6, 8, 10]),
         "truncation": random.choice([0.05, 0.08, 0.10]),
         "delay": 1,
         "pasteurization": "ON",
