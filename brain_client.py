@@ -45,16 +45,13 @@ class BrainClient:
         self._authenticate(username, password)
 
     def _authenticate(self, username: str, password: str):
-        r = self.session.post(
-            f"{self.BASE}/authentication",
-            json={"username": username, "password": password},
-        )
+        self.session.auth = (username, password)
+        r = self.session.post(f"{self.BASE}/authentication")
         if r.status_code not in (200, 201):
             raise RuntimeError(f"Auth failed: {r.status_code} {r.text}")
         logger.info("Authenticated with WQ Brain")
 
     def simulate(self, expression: str, settings: Optional[dict] = None) -> dict:
-        """Submit an alpha for simulation and poll until complete."""
         cfg = {**DEFAULT_SETTINGS, **(settings or {})}
         payload = {
             "type": "REGULAR",
@@ -74,20 +71,39 @@ class BrainClient:
         progress_url = r.headers.get("location")
         if not progress_url:
             return {"error": "No location header", "status": "SUBMIT_FAILED"}
-        return self._poll(progress_url)
+
+        result = self._poll(progress_url)
+
+        # Fetch alpha stats if simulation completed
+        alpha_id = result.get("alpha")
+        if alpha_id and result.get("status") in ("COMPLETE", "WARNING"):
+            stats = self.get_alpha_stats(alpha_id)
+            result["is"] = stats
+
+        return result
+
+    def get_alpha_stats(self, alpha_id: str) -> dict:
+        r = self.session.get(f"{self.BASE}/alphas/{alpha_id}")
+        if r.status_code != 200:
+            return {}
+        data = r.json()
+        is_stats = data.get("is", {})
+        return is_stats
 
     def _poll(self, url: str, max_wait: int = 300) -> dict:
-        """Poll a simulation progress URL until terminal state."""
         start = time.time()
         while time.time() - start < max_wait:
-            r = self.session.get(url)
-            if r.status_code != 200:
-                time.sleep(5)
-                continue
-            data = r.json()
-            status = data.get("status", "")
-            if status not in ("RUNNING", "PENDING", "QUEUED", ""):
-                return data
+            try:
+                r = self.session.get(url)
+                if r.status_code != 200:
+                    time.sleep(5)
+                    continue
+                data = r.json()
+                status = data.get("status", "")
+                if status not in ("RUNNING", "PENDING", "QUEUED", ""):
+                    return data
+            except Exception as e:
+                logger.warning(f"Poll connection error, retrying: {e}")
             time.sleep(4)
         return {"status": "TIMEOUT"}
 
